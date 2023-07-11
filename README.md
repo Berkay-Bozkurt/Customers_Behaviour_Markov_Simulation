@@ -12,7 +12,7 @@ The transition probabilities matrix is calculated to analyze how customers switc
 ![State Diagram](markov_data/markov_diagram.png)
 
 ### Technologies and Libraries
-- Python 3.8
+- Python 3.10
 - OpenCV
 - pandas
 - numpy
