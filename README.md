@@ -6,7 +6,7 @@ The simulation is based on tracked data from customers in a supermarket over a f
 
 Customers start by entering through the entrance and then have the freedom to move between four different areas: fruit, spices, dairy, and drinks. Eventually, they will reach the checkout area, at which point they are considered to have left the shop.
 
-The transition probabilities matrix is calculated to analyze how customers switch between different sections of the supermarket.
+The transition probabilities matrix is computed to examine the likelihood of customers transitioning between various sections of the supermarket.
 
 ### State Diagram
 ![State Diagram](markov_data/markov_diagram.png)
@@ -16,8 +16,6 @@ The transition probabilities matrix is calculated to analyze how customers switc
 - OpenCV
 - pandas
 - numpy
-- datetime
-- time
 
 ## License
 
