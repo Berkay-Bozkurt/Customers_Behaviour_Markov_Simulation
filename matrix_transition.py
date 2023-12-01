@@ -1,69 +1,83 @@
 import pandas as pd
 import datetime
 
-def get_data(filename, weekday):
-    df = pd.read_csv(filename, sep=";", parse_dates=["timestamp"])
-    df["weekday"] = weekday
-    return df
+# Function to load data for a specific day
+def load_data(day: str):
+    return pd.read_csv(f"./data/{day}.csv", sep=";", parse_dates=["timestamp"])
 
-monday = get_data("./data/monday.csv", "monday")
-tuesday = get_data("./data/tuesday.csv", "tuesday")
-wednesday = get_data("./data/wednesday.csv", "wednesday")
-thursday = get_data("./data/thursday.csv", "thursday")
-friday = get_data("./data/friday.csv", "friday")
-def new_customer_no(df, weekday):
+# Function to modify 'customer_no' column by appending weekday
+def modify_customer_no(df, weekday):
     df["customer_no"] = df["customer_no"].astype(str) + "_" + weekday
 
-new_customer_no(monday, "monday")
-new_customer_no(tuesday, "tuesday")
-new_customer_no(wednesday, "wednesday")
-new_customer_no(thursday, "thursday")
-new_customer_no(friday, "friday")
-
+# Function to add missing checkout locations
 def add_missing_checkout_location(df):
     checkout_customers = df[df["location"] == "checkout"]["customer_no"].unique()
-    whole_customers = df["customer_no"].unique()
-    diff = set(whole_customers).difference(checkout_customers)
+    all_customers = df["customer_no"].unique()
+    missing_customers = set(all_customers).difference(checkout_customers)
     new_timestamp = df["timestamp"].max() + pd.DateOffset(hours=2)
-    missing_checkouts = pd.DataFrame({"timestamp": [new_timestamp] * len(diff),"customer_no": list(diff),"location": ["checkout"] * len(diff), "weekday":df["weekday"][0]})
-    df = pd.concat([df, missing_checkouts], ignore_index=True)
-    return df
-monday = add_missing_checkout_location(monday)
-tuesday = add_missing_checkout_location(tuesday)
-wednesday = add_missing_checkout_location(wednesday)
-thursday = add_missing_checkout_location(thursday)
-friday = add_missing_checkout_location(friday)
+    missing_checkouts_data = {
+        "timestamp": [new_timestamp] * len(missing_customers),
+        "customer_no": list(missing_customers),
+        "location": ["checkout"] * len(missing_customers),
+        "weekday": df["weekday"].iloc[0]
+    }
+    return pd.concat([df, pd.DataFrame(missing_checkouts_data)], ignore_index=True)
+
+# Function to add entrance state for customers
 def add_entrance_state(df):
-    min_datetime = df.groupby("customer_no")["timestamp"].min().reset_index()
+    min_timestamp_per_customer = df.groupby("customer_no")["timestamp"].min().reset_index()
     one_minute = datetime.timedelta(minutes=1)
-    entrance_entries = min_datetime.apply(lambda x: {"timestamp": x["timestamp"] - one_minute, "customer_no": x["customer_no"], "location": "entrance"}, axis=1)
-    entrance_entries = pd.DataFrame(list(entrance_entries))
-    df = pd.concat([df, entrance_entries], ignore_index=True)
+    entrance_entries = min_timestamp_per_customer.apply(
+        lambda x: {
+            "timestamp": x["timestamp"] - one_minute,
+            "customer_no": x["customer_no"],
+            "location": "entrance"
+        },
+        axis=1
+    )
+    entrance_entries_df = pd.DataFrame(list(entrance_entries))
+    return pd.concat([df, entrance_entries_df], ignore_index=True)
+
+# Function to create a proper DataFrame structure
+def make_df_proper(coming_data: list):
+    df = pd.concat(coming_data).set_index('timestamp').sort_index()
+    df = df[['customer_no', 'location']].rename(columns={'location': 'location0'})
     return df
-monday = add_entrance_state(monday)
-tuesday = add_entrance_state(tuesday)
-wednesday = add_entrance_state(wednesday)
-thursday = add_entrance_state(thursday)
-friday = add_entrance_state(friday)
 
-def make_Df_proper(comming_data):
-    df = pd.concat(comming_data, ignore_index=True)
-    df.set_index("timestamp", inplace=True)
-    df.sort_index(inplace=True)
-    df=df[['customer_no', 'location']]
-    df.rename(columns={'location': 'location0'}, inplace=True)
-    return df
-weekly_data_matrix=make_Df_proper([monday, tuesday, wednesday, thursday, friday])
+# Load data for each weekday and modify 'customer_no' column
+week_days = ["monday", "tuesday", "wednesday", "thursday", "friday"]
+dataframes = []
+for day in week_days:
+    df = load_data(day)
+    modify_customer_no(df, day)
+    dataframes.append(df)
 
-weekly_data_matrix=weekly_data_matrix.groupby("customer_no")[["location0"]].resample(rule="1min").ffill()
-weekly_data_matrix.reset_index(inplace=True)
-weekly_data_matrix["location1"] =weekly_data_matrix.groupby("customer_no")["location0"].shift(-1)
+# Process dataframes
+for i, df in enumerate(dataframes):
+    dataframes[i] = add_missing_checkout_location(df)
+    dataframes[i] = add_entrance_state(dataframes[i])
 
+# Create a proper weekly data matrix
+weekly_data_matrix = make_df_proper(dataframes)
+
+# Group by customer number and resample
+weekly_data_matrix = weekly_data_matrix.groupby("customer_no")["location0"].resample(rule="1min").ffill().reset_index()
+
+# Create location1 column by shifting location0 within each customer group
+weekly_data_matrix["location1"] = weekly_data_matrix.groupby("customer_no")["location0"].shift(-1)
+
+# Fill missing values in location0 and location1
 weekly_data_matrix["location0"].fillna("entrance", inplace=True)
 weekly_data_matrix["location1"].fillna("checkout", inplace=True)
 
-transition=pd.crosstab(weekly_data_matrix['location0'], weekly_data_matrix['location1'], normalize="index")
-transition_modified_animation=transition.copy()
-transition_modified_animation["entrance"]= [0.050000,0.00000,0.00000,0.00000,0.00000,0.00000]
-transition_modified_animation["checkout"]= [0.95,0.094521,0.210537,0.0000,0.189091,0.137560]
+# Create transition matrix
+transition_matrix = pd.crosstab(weekly_data_matrix['location0'],
+                                weekly_data_matrix['location1'], normalize="index")
 
+# Make a copy of the original transition matrix
+transition_modified_animation = transition_matrix.copy()
+
+# Modify transition probabilities for "entrance" and "checkout"
+entrance_probs = [0.025, 0, 0, 0, 0, 0]
+transition_modified_animation["entrance"] = entrance_probs
+transition_modified_animation["checkout"].iloc[0] = 0.975
