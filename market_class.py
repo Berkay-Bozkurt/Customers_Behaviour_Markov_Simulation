@@ -1,97 +1,83 @@
 import random
 import pandas as pd
-import numpy as np
 from datetime import datetime
 from customer_class import Customer
 
 class Supermarket:
-    """manages multiple Customer instances that are currently in the market.
-    """
+    """manages multiple Customer instances and inventory that are currently in the market."""
 
     def __init__(self, name, opening, closing):
-        self.name=name        
-        self.number_in_stock={'dairy':70, 'drinks':100, 'fruit':50, 'spices':30}
+        """Initialize the Supermarket instance with given parameters."""
+        self.name = name
+        self.inventory = {'dairy': 70, 'drinks': 100, 'fruit': 50, 'spices': 30}
         self.customers = []
         self.opening = opening
         self.closing = closing
         self.minutes = 0
-        self.revenue=0
         self.index = 0
         self.customer_index = 0
-        self.dti = pd.date_range(self.opening, self.closing, freq="T").time
-
+        self.revenue = 0
+        self.time_range = pd.date_range(self.opening, self.closing, freq="T").time
 
     def __repr__(self):
-        return f'{len(self.dti)}'
-    
+        """String representation of the Supermarket instance."""
+        return f'{len(self.time_range)}'
+
     def is_open(self):
-        if self.index <= len(self.dti)-2:
-            return datetime.strptime(self.opening, '%H:%M:%S') <= datetime.strptime(self.get_time(), '%H:%M:%S') <= datetime.strptime(self.closing, '%H:%M:%S')
+        """Check if the supermarket is open based on the current time."""
+        current_time = self.time_range[self.index]
+        return datetime.strptime(self.opening, '%H:%M:%S') <= datetime.strptime(str(current_time), '%H:%M:%S') <= datetime.strptime(self.closing, '%H:%M:%S')
 
+    def get_current_time(self):
+        """Get the current time in HH:MM format."""
+        return str(self.time_range[self.index])
 
-    def get_time(self):
-        """current time in HH:MM format,"""
-        self.current_time = self.dti[self.index]
-        self.current_time = str(self.current_time)
-        return self.current_time
+    def get_active_customers(self):
+        """Retrieve details of active customers."""
+        return [customer.get_customer_details() for customer in self.customers if customer.is_active()]
 
-    def print_customers(self):
-        """print all customers with the current time and id in CSV format.
-        """
-        return self.customers
-
-    def next_minute(self):
-        """"propagates all customers to the next state."""
-
+    def move_customers_next_minute(self):
+        """Move customers to the next state for the next minute."""
         self.index += 1
-        next_time = self.dti[self.index]
-
         for customer in self.customers:
-            customer.Customer.next_locatons()
-    
-    def add_new_customers(self):
-        """randomly creates new customers.
-        """
-        self.state = random.choices(['dairy', 'drinks', 'fruit', 'spices'])
-        self.state = self.state[0]
+            customer.move_to_next_location()
+
+    def add_new_customer(self):
+        """Add a new random customer to the supermarket."""
         self.customer_index += 1
-        new_customer = Customer(self.customer_index, self.state)
+        state = random.choice(['dairy', 'drinks', 'fruit', 'spices'])
+        new_customer = Customer(self.customer_index, state)
         self.customers.append(new_customer)
 
-    def remove_exitsting_customers(self):
-        """removes every customer that is not active any more.
-        """
-        for customer in self.customers:
-            if customer.is_active():
-                self.customers.remove(customer)
-    
-    def updated_revenue(self):
-        if Customer.self.state=="checkout":
-            self.revenue=self.revenue+100-Customer.self.budget
-        return self.revenue 
-        
-    
-    def in_stock(self):
-        if Customer.self.state=="dairy":
-            self.number_in_stock[list(self.number_in_stock.keys())[0]]-=1
-        elif Customer.self.state=="drinks":
-            self.number_in_stock[list(self.number_in_stock.keys())[1]]-=1
-        elif Customer.self.state=="fruit":
-            self.number_in_stock[list(self.number_in_stock.keys())[2]]-=1
-        elif Customer.self.state=="spices":
-            self.number_in_stock[list(self.number_in_stock.keys())[3]]-=1
-        return self.number_in_stock
-    
-    def add_stock(self):
-        for i in self.number_in_stock.keys():
-            if i<10:
-                print(f"stock is low at {i}")
-                self.number_in_stock[list(self.number_in_stock.keys())[1]]+=30    
-    
+    def remove_inactive_customers(self):
+        """Remove inactive customers from the supermarket."""
+        self.customers = [customer for customer in self.customers if customer.is_active()]
 
-if __name__=="__main__":
-        Market=Supermarket("Marketelli")
-        Market.add_new_customers()
-        Market.remove_exitsting_customers()
-        Market.updated_revenue()
-        Market.in_stock()
+    def update_revenue(self):
+        """Update supermarket revenue based on customers' transactions."""
+        for customer in self.customers:
+            if customer.state == "checkout":
+                self.revenue += 100 - customer.budget
+        return self.revenue
+
+    def update_inventory(self):
+        """Update inventory based on customers' purchases."""
+        for customer in self.customers:
+            if customer.state in self.inventory:
+                self.inventory[customer.state] -= 1
+
+    def add_to_inventory(self):
+        """Check inventory levels and replenish low stock."""
+        for category, stock_count in self.inventory.items():
+            if stock_count < 10:
+                print(f"Stock is low for {category}")
+                self.inventory[category] += 30
+
+if __name__ == "__main__":
+    # Run a basic simulation of the supermarket
+    market = Supermarket("Marketelli", "08:00:00", "20:00:00")
+    market.add_new_customer()
+    market.remove_inactive_customers()
+    market.update_revenue()
+    market.update_inventory()
+    market.add_to_inventory()
