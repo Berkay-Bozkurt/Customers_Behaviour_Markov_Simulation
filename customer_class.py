@@ -1,5 +1,5 @@
 import numpy as np
-from transition_matrix import transition_modified_animation
+from matrix_transition import transition_modified_animation
 
 class Customer:
     def __init__(self, name):    
