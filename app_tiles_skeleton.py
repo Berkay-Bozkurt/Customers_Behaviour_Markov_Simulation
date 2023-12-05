@@ -2,8 +2,6 @@ import numpy as np
 import pandas as pd
 import cv2
 import random
-from datetime import timedelta
-import time
 from pandas import read_csv
 
 TILE_SIZE = 32
@@ -117,28 +115,27 @@ class CustomerMap:
 if __name__ == "__main__":
     background = np.zeros((500, 700, 3), np.uint8)
     tiles = cv2.imread("./images/tiles.png")
-    simulated_table = read_csv('./simulated_market_table.csv', parse_dates=["timestamp"], date_parser=pd.to_datetime)
-    opening = simulated_table["timestamp"].iloc[0]
-    #simulated_table=simulated_table.groupby(["timestamp", "timestamp"]).first()
+    simulated_table = pd.read_csv('./simulated_market_table.csv', parse_dates=["timestamp"], date_parser=pd.to_datetime)
+    opening = simulated_table["timestamp"].min()
 
     customer_figure = cv2.imread("./images/customer.png")
-    customer_figure = cv2.resize(customer_figure, (TILE_SIZE, TILE_SIZE))  # Resize the customer image
+    customer_figure = cv2.resize(customer_figure, (TILE_SIZE, TILE_SIZE))
     market = SupermarketMap(MARKET, tiles)
     customer = CustomerMap(market, customer_figure)
 
-    for i in range(len(simulated_table["timestamp"])):
-        frame = background
+    unique_timestamps = simulated_table["timestamp"].unique()
+
+    for timestamp in unique_timestamps:
+        frame = background.copy()
         market.background_create(frame)
 
-        for customer_index, customer_location in simulated_table.loc[
-            simulated_table["timestamp"] == opening, ["customer_no", "location"]].values:
-            print("time:", opening, "customer_no:", customer_index)
+        customers_at_time = simulated_table[simulated_table["timestamp"] == timestamp]
+        for _, row in customers_at_time.iterrows():
+            customer_location = row["location"]
+            print("time:", timestamp, "customer_no:", row["customer_no"])
             print(customer_location)
             customer.customer_go(frame, customer_location)
             cv2.imshow("showframe", frame)
-            time.sleep(0.4)
-            key = cv2.waitKey(1)
+            cv2.waitKey(400)
           
-        opening = opening + timedelta(minutes=1)
-
     cv2.destroyAllWindows()
