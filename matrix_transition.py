@@ -10,7 +10,7 @@ def modify_customer_no(df, weekday):
     df["customer_no"] = df["customer_no"].astype(str) + "_" + weekday
 
 # Function to add missing checkout locations
-def add_missing_checkout_location(df):
+def add_missing_checkout_location(df, weekday):
     checkout_customers = df[df["location"] == "checkout"]["customer_no"].unique()
     all_customers = df["customer_no"].unique()
     missing_customers = set(all_customers).difference(checkout_customers)
@@ -19,7 +19,7 @@ def add_missing_checkout_location(df):
         "timestamp": [new_timestamp] * len(missing_customers),
         "customer_no": list(missing_customers),
         "location": ["checkout"] * len(missing_customers),
-        "weekday": df["weekday"].iloc[0]
+        "weekday": weekday
     }
     return pd.concat([df, pd.DataFrame(missing_checkouts_data)], ignore_index=True)
 
@@ -54,7 +54,7 @@ for day in week_days:
 
 # Process dataframes
 for i, df in enumerate(dataframes):
-    dataframes[i] = add_missing_checkout_location(df)
+    dataframes[i] = add_missing_checkout_location(df, week_days[i])
     dataframes[i] = add_entrance_state(dataframes[i])
 
 # Create a proper weekly data matrix
