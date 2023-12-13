@@ -67,7 +67,6 @@ weekly_data_matrix = weekly_data_matrix.groupby("customer_no")["location0"].resa
 weekly_data_matrix["location1"] = weekly_data_matrix.groupby("customer_no")["location0"].shift(-1)
 
 # Fill missing values in location0 and location1
-weekly_data_matrix["location0"].fillna("entrance", inplace=True)
 weekly_data_matrix["location1"].fillna("checkout", inplace=True)
 
 # Create transition matrix
