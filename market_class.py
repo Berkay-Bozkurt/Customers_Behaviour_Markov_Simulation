@@ -87,14 +87,14 @@ class Supermarket:
         """Creates a simulated market table for a given duration"""
         market_table = []
         while self.is_open() and duration_minutes > 0:
-            behavior = self.record_customer_behavior()
-            market_table.extend(behavior)
             self.add_new_customer()
+            self.move_customers_next_minute()
             self.remove_inactive_customers()
             self.update_revenue()
             self.update_inventory()
             self.add_to_inventory()
-            self.move_customers_next_minute()
+            behavior = self.record_customer_behavior()
+            market_table.extend(behavior)
             duration_minutes -= 1
         return pd.DataFrame(market_table)
 
